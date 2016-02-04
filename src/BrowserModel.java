@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ResourceBundle;
 
 
 /**
@@ -15,13 +16,15 @@ import java.util.Map;
 public class BrowserModel {
     // constants
     public static final String PROTOCOL_PREFIX = "http://";
+    public static final String DEFAULT_RESOURCE_PACKAGE = "resources/";
+    public static final String ERROR_STRING = "ErrorMessage";
     // state
     private URL myHome;
     private URL myCurrentURL;
     private int myCurrentIndex;
     private List<URL> myHistory;
     private Map<String, URL> myFavorites;
-
+    private ResourceBundle myErrors;
 
     /**
      * Creates an empty model.
@@ -32,28 +35,33 @@ public class BrowserModel {
         myCurrentIndex = -1;
         myHistory = new ArrayList<>();
         myFavorites = new HashMap<>();
+        
+        
+        myErrors = ResourceBundle.getBundle(DEFAULT_RESOURCE_PACKAGE + ERROR_STRING);
     }
 
     /**
      * Returns the first page in next history, null if next history is empty.
      */
     public URL next () {
-        if (hasNext()) {
+        if(hasNext()) {
             myCurrentIndex++;
             return myHistory.get(myCurrentIndex);
+        } else{
+            throw new BrowserException(myErrors.getString("noFuture"));
         }
-        return null;
     }
 
     /**
      * Returns the first page in back history, null if back history is empty.
      */
     public URL back () {
-        if (hasPrevious()) {
+        if(hasPrevious()){
             myCurrentIndex--;
             return myHistory.get(myCurrentIndex);
+    	} else{
+            throw new BrowserException(myErrors.getString("noHistory"));
         }
-        return null;
     }
 
     /**
@@ -76,7 +84,7 @@ public class BrowserModel {
             return myCurrentURL;
         }
         catch (Exception e) {
-            return null;
+            throw new BrowserException(String.format(myErrors.getString("urlNotFound"), url));
         }
     }
 
@@ -106,8 +114,10 @@ public class BrowserModel {
      */
     public void setHome () {
         // just in case, might be called before a page is visited
-        if (myCurrentURL != null) {
-            myHome = myCurrentURL;
+        if (myCurrentURL !=null) {
+        	myHome = myCurrentURL;
+        } else {
+        	throw new BrowserException(myErrors.getString("home"));
         }
     }
 
@@ -125,12 +135,15 @@ public class BrowserModel {
      * Returns URL from favorites associated with given name, null if none set.
      */
     public URL getFavorite (String name) {
-        if (name != null && !name.equals("") && myFavorites.containsKey(name)) {
+        
+    	if(name!=null && !name.equals("") && myFavorites.containsKey(name)) {
             return myFavorites.get(name);
+        } else {
+        	throw new BrowserException(myErrors.getString("noFavorites"));
         }
-        return null;
+        
     }
-
+    
     // deal with a potentially incomplete URL
     private URL completeURL (String possible) {
         try {

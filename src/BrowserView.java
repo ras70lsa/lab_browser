@@ -15,6 +15,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
@@ -47,7 +48,7 @@ public class BrowserView {
     // constants
     public static final Dimension DEFAULT_SIZE = new Dimension(800, 600);
     public static final String DEFAULT_RESOURCE_PACKAGE = "resources/";
-    public static final String STYLESHEET = "default.css";
+    public static final String STYLESHEET = "fancy.css";
     public static final String BLANK = " ";
 
     // scene, needed to report back to Application
@@ -61,6 +62,7 @@ public class BrowserView {
     private Button myBackButton;
     private Button myNextButton;
     private Button myHomeButton;
+    private Button favoriteAdderButton;
     // favorites
     private ComboBox<String> myFavorites;
     // get strings from resource file
@@ -84,19 +86,20 @@ public class BrowserView {
         enableButtons();
         // create scene to hold UI
         myScene = new Scene(root, DEFAULT_SIZE.width, DEFAULT_SIZE.height);
-        //myScene.getStylesheets().add(DEFAULT_RESOURCE_PACKAGE + STYLESHEET);
+       myScene.getStylesheets().add(DEFAULT_RESOURCE_PACKAGE + STYLESHEET);
     }
 
     /**
      * Display given URL.
      */
     public void showPage (String url) {
-        URL valid = myModel.go(url);
-        if (valid != null) {
+        
+    	try{
+    		URL valid = myModel.go(url);
             update(valid);
         }
-        else {
-            showError("Could not load " + url);
+        catch(BrowserException e){
+            showError(e.getMessage());
         }
     }
 
@@ -126,12 +129,22 @@ public class BrowserView {
 
     // move to the next URL in the history
     private void next () {
+    	try{
         update(myModel.next());
+    	}
+    	catch (BrowserException e){
+    		showError(e.getMessage());
+    	}
     }
 
     // move to the previous URL in the history
     private void back () {
-        update(myModel.back());
+    	try{
+            update(myModel.back());
+        	}
+        	catch (BrowserException e){
+        		showError(e.getMessage());
+        	}
     }
 
     // change current URL to the home page, if set
@@ -141,9 +154,14 @@ public class BrowserView {
 
     // change page to favorite choice
     private void showFavorite (String favorite) {
-        showPage(myModel.getFavorite(favorite).toString());
+    	try {
+    		
+    		showPage(myModel.getFavorite(favorite).toString());
+    	} catch (BrowserException e) {
+    		showError(e.getMessage());
+    	}
         // reset favorites ComboBox so the same choice can be made again
-        myFavorites.setValue(null);
+        //myFavorites.setValue(null);
     }
 
     // update just the view to display given URL
@@ -164,6 +182,7 @@ public class BrowserView {
         if (response.isPresent()) {
             myModel.addFavorite(response.get());
             myFavorites.getItems().add(response.get());
+            
         }
     }
 
@@ -172,6 +191,8 @@ public class BrowserView {
         myBackButton.setDisable(! myModel.hasPrevious());
         myNextButton.setDisable(! myModel.hasNext());
         myHomeButton.setDisable(myModel.getHome() == null);
+        
+        
     }
 
     // convenience method to create HTML page display
@@ -225,14 +246,36 @@ public class BrowserView {
     private Node makePreferencesPanel () {
         HBox result = new HBox();
         myFavorites = new ComboBox<String>();
-        // ADD REST OF CODE HERE
+        
+       
+        favoriteAdderButton = makeButton("Favorite", event -> addFavorite());
+        result.getChildren().add(favoriteAdderButton);
+        
+        myFavorites.setOnAction(e -> favoriteBarClicked());
+        result.getChildren().add(myFavorites);
+        myFavorites.setPromptText(myResources.getString("FavoriteBar"));
+       
+        
         result.getChildren().add(makeButton("SetHomeCommand", event -> {
-            myModel.setHome();
-            enableButtons();
+        	try{
+        		myModel.setHome();
+            	enableButtons();
+        	}
+        	catch (BrowserException e) {
+        		showError(e.getMessage());
+        	}
         }));
         return result;
     }
-
+    
+    private void favoriteBarClicked() {
+    	
+    	if(myFavorites.getValue()!= null && !myFavorites.getValue().toString().isEmpty()) {
+    		showFavorite(myFavorites.getValue().toString());
+    	}
+    	
+    }
+    
     // makes a button using either an image or a label
     private Button makeButton (String property, EventHandler<ActionEvent> handler) {
         // represent all supported image suffixes
